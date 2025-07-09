@@ -1,0 +1,33 @@
+# Compiled object files
+*.o
+*.obj
+
+# Executables
+*.exe
+*.out
+a.out
+
+# Libraries
+*.lib
+*.so
+*.dll
+*.a
+
+# Debugging and profiling files
+*.dSYM
+*.prof
+*.gcda
+*.gcno
+
+# Editor specific files
+*~
+*.bak
+.vscode/
+.idea/
+
+# Build system specific files (e.g., Make, CMake)
+build/
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
