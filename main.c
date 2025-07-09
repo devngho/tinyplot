@@ -634,7 +634,7 @@ int main() {
     while (1) {
         printf("y=");
 
-        scanf("%201[^\n]", expression);
+        scanf("%199[^\n]", expression);
         if (strcmp(expression, "exit") == 0) {
             break;
         }
