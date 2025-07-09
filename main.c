@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
+#include <math.h>
 
 #define MAX_EXPRESSION_LEN 200
 #define X_RES 50
@@ -529,7 +529,7 @@ double evaluate_expression(struct ASTNode *node, double x) {
         case AST_CONSTANT:
             return *(double *)(node->value);
         case AST_VARIABLE:
-            char *name = (char *)(node->value);
+            char *name = node->value;
             if (strcmp(name, "x") == 0) {
                 return x;
             } else {
@@ -538,6 +538,8 @@ double evaluate_expression(struct ASTNode *node, double x) {
 
                 fprintf(stderr, "Unknown variable: %s\n", name);
                 exit(EXIT_FAILURE);
+
+                return 0.0;
             }
         case AST_BINARY_OPERATION: {
             struct ASTBinaryOperation *op = (struct ASTBinaryOperation *)(node->value);
@@ -632,7 +634,7 @@ int main() {
     while (1) {
         printf("y=");
 
-        scanf("%200[^\n]", expression);
+        scanf("%201[^\n]", expression);
         if (strcmp(expression, "exit") == 0) {
             break;
         }
