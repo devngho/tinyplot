@@ -4,4 +4,7 @@ project(tinyplot C)
 set(CMAKE_C_STANDARD 11)
 
 add_executable(tinyplot main.c)
-target_link_libraries(tinyplot m)
+
+if (UNIX AND NOT APPLE)
+    target_link_libraries(tinyplot m)
+endif ()
