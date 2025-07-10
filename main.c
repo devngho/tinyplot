@@ -758,8 +758,8 @@ int main() {
     char expression[MAX_EXPRESSION_LEN];
 
     printf("Enter y=f(x) (example: y=2x, y=sqrt(x-2)+3) to see the graph.\n");
-    printf("Allowed functions: sin, cos, tan, log, exp, and sqrt.\n");
-    printf("Allowed constants: pi, e (* operator is required between 'x' and others)");
+    printf("Allowed functions: sin, cos, tan, log, exp, sqrt, and abs.\n");
+    printf("Allowed constants: pi, e (* operator is required between 'x' and others, for example pi*x)");
     printf("%.2f <= x <= %.2f, %.2f <= y <= %.2f\n", x_min, x_max, y_min, y_max);
     while (1) {
         printf("y=");
