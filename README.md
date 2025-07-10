@@ -2,7 +2,7 @@
 
 입력받은 식을 그래프로 표현합니다.
 
-사용 가능한 함수: $sin, cos, tan, log, exp, sqrt$
+사용 가능한 함수: $sin, cos, tan, log, exp, sqrt, abs$
 
 사용 가능한 상수: $pi, e$
 
@@ -82,7 +82,7 @@ Parsed Expression:(sqrt((x + 5.000000)) - 3.000000)
 
 ### Limitations
 - $-20 \leq x \leq 20, -10 \leq y \leq 10$으로 제한
-- $50\times30$으로 제한
+- $60\times30$으로 제한
 
 ### License
 [MIT License](https://github.com/devngho/tinyplot/blob/main/LICENSE) 💕

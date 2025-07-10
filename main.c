@@ -6,7 +6,7 @@
 #include <math.h>
 
 #define MAX_EXPRESSION_LEN 200
-#define X_RES 50
+#define X_RES 60
 #define Y_RES 30
 
 enum TokenKind {
@@ -287,13 +287,49 @@ struct Token* parser_next(struct Parser *parser) {
     return parser->tokens[parser->current++];
 }
 
-int op_precedence(char *op) {
+void print_parser_state(struct Parser *parser) {
+    for (int i = 0; i<parser->current; i++) {
+        if (parser->tokens[i]->type == CONSTANT) {
+            printf("Token %d: Constant: %f\n", i, get_constant_value(parser->tokens[i]));
+        } else if (parser->tokens[i]->type == IDENTIFIER) {
+            printf("Token %d: Identifier: %s\n", i, (char *)(parser->tokens[i]->value));
+        } else if (parser->tokens[i]->type == OPERATOR) {
+            printf("Token %d: Operator: %s\n", i, (char *)(parser->tokens[i]->value));
+        }
+    }
+
+    printf("Current token: ");
+
+    if (parser->tokens[parser->current]->type == CONSTANT) {
+        printf("Constant: %f\n", get_constant_value(parser->tokens[parser->current]));
+    } else if (parser->tokens[parser->current]->type == IDENTIFIER) {
+        printf("Identifier: %s\n", (char *)(parser->tokens[parser->current]->value));
+    } else if (parser->tokens[parser->current]->type == OPERATOR) {
+        printf("Operator: %s\n", (char *)(parser->tokens[parser->current]->value));
+    } else {
+        printf("End of tokens.\n");
+    }
+
+    printf("Current index: %d\n", parser->current);
+
+    for (int i = parser->current+1; parser->tokens[i]->type != END; i++) {
+        if (parser->tokens[i]->type == CONSTANT) {
+            printf("Token %d: Constant: %f\n", i, get_constant_value(parser->tokens[i]));
+        } else if (parser->tokens[i]->type == IDENTIFIER) {
+            printf("Token %d: Identifier: %s\n", i, (char *)(parser->tokens[i]->value));
+        } else if (parser->tokens[i]->type == OPERATOR) {
+            printf("Token %d: Operator: %s\n", i, (char *)(parser->tokens[i]->value));
+        }
+    }
+}
+
+int op_l_precedence(char *op) {
     if (strcmp(op, "+") == 0 || strcmp(op, "-") == 0) {
         return 1;
     } else if (strcmp(op, "*") == 0 || strcmp(op, "/") == 0) {
-        return 2;
-    } else if (strcmp(op, "^") == 0) {
         return 3;
+    } else if (strcmp(op, "^") == 0) {
+        return 6;
     } else if (strcmp(op, "·") == 0) {
         return 200;
     } else if (strcmp(op, "(") == 0) {
@@ -304,17 +340,44 @@ int op_precedence(char *op) {
     return 0;
 }
 
-int parser_precedence(struct Parser *parser) {
-    struct Token *token = parser_cur(parser);
-    if (token->type == OPERATOR) {
-        char *op = (char *)(token->value);
-
-        return op_precedence(op);
+int op_r_precedence(char *op) {
+    if (strcmp(op, "+") == 0 || strcmp(op, "-") == 0) {
+        return 2;
+    } else if (strcmp(op, "*") == 0 || strcmp(op, "/") == 0) {
+        return 4;
+    } else if (strcmp(op, "^") == 0) {
+        return 5;
+    } else if (strcmp(op, "·") == 0) {
+        return 201;
+    } else if (strcmp(op, "(") == 0) {
+        return 101;
+    } else if (strcmp(op, ")") == 0) {
+        return -99;
     }
     return 0;
 }
 
-int parser_peek_precedence(struct Parser *parser) {
+int parser_l_precedence(struct Parser *parser) {
+    struct Token *token = parser_cur(parser);
+    if (token->type == OPERATOR) {
+        char *op = (char *)(token->value);
+
+        return op_l_precedence(op);
+    }
+    return 0;
+}
+
+int parser_r_precedence(struct Parser *parser) {
+    struct Token *token = parser_peek(parser);
+    if (token->type == OPERATOR) {
+        char *op = (char *)(token->value);
+
+        return op_r_precedence(op);
+    }
+    return 0;
+}
+
+int parser_peek_l_precedence(struct Parser *parser) {
     if (parser->tokens[parser->current]->type == END) {
         return -1;
     }
@@ -327,9 +390,30 @@ int parser_peek_precedence(struct Parser *parser) {
     if (token->type == OPERATOR) {
         char *op = (char *)(token->value);
 
-        return op_precedence(op);
+        return op_l_precedence(op);
     } else if (token->type == IDENTIFIER) {
-        return op_precedence("·");
+        return op_l_precedence("·");
+    } else if (token->type == CONSTANT) {
+        return 0;
+    }
+}
+
+int parser_peek_r_precedence(struct Parser *parser) {
+    if (parser->tokens[parser->current]->type == END) {
+        return -1;
+    }
+
+    if (parser->tokens[parser->current + 1]->type == END) {
+        return -1;
+    }
+
+    struct Token *token = parser_peek(parser);
+    if (token->type == OPERATOR) {
+        char *op = (char *)(token->value);
+
+        return op_r_precedence(op);
+    } else if (token->type == IDENTIFIER) {
+        return op_r_precedence("·");
     } else if (token->type == CONSTANT) {
         return 0;
     }
@@ -338,7 +422,7 @@ int parser_peek_precedence(struct Parser *parser) {
 void print_expressions(struct ASTNode *node, int depth);
 
 char *function_names[] = {
-    "sin", "cos", "tan", "log", "exp", "sqrt"
+    "sin", "cos", "tan", "log", "exp", "sqrt", "abs"
 };
 
 int is_function_name(const char *name) {
@@ -362,7 +446,7 @@ struct ASTNode* parse_expression(struct Parser *parser, int precedence) {
     } else if (token->type == OPERATOR && (strcmp((char *)(token->value), "+") == 0 || strcmp((char *)(token->value), "-") == 0)) {
         char *operator = (char *)token->value;
         parser_next(parser);
-        struct ASTNode *right = parse_expression(parser, op_precedence(operator));
+        struct ASTNode *right = parse_expression(parser, op_r_precedence(operator));
         left = create_unary_operation_node(right, operator);
     } else if (token->type == OPERATOR && strcmp((char *)(token->value), "(") == 0) {
         parser_next(parser);
@@ -379,7 +463,7 @@ struct ASTNode* parse_expression(struct Parser *parser, int precedence) {
         exit(EXIT_FAILURE);
     }
 
-    while (parser_peek_precedence(parser) > precedence) {
+    while (parser_peek_l_precedence(parser) > precedence) {
         struct Token *op_token = parser_peek(parser);
         if (op_token == NULL) break;
 
@@ -392,11 +476,7 @@ struct ASTNode* parse_expression(struct Parser *parser, int precedence) {
             if (strcmp(op, "(") == 0) {
                 parser_next(parser);
 
-                if (left->type == AST_CONSTANT) {
-                    struct ASTNode *argument = parse_expression(parser, 0);
-
-                    left = create_binary_operation_node(left, argument, '*');
-                } else {
+                if (left->type == AST_VARIABLE) {
                     char *left_name = (char *)(left->value);
 
                     struct ASTNode *argument = parse_expression(parser, 0);
@@ -410,11 +490,15 @@ struct ASTNode* parse_expression(struct Parser *parser, int precedence) {
                     }
 
                     left = func_node;
+                } else {
+                    struct ASTNode *argument = parse_expression(parser, 0);
+
+                    left = create_binary_operation_node(left, argument, '*');
                 }
             } else {
                 parser_next(parser);
 
-                struct ASTNode *right = parse_expression(parser, op_precedence(op));
+                struct ASTNode *right = parse_expression(parser, op_r_precedence(op));
 
                 left = create_binary_operation_node(left, right, op[0]);
             }
@@ -422,7 +506,7 @@ struct ASTNode* parse_expression(struct Parser *parser, int precedence) {
             char *identifier = (char *)(op_token->value);
 
             if (!is_function_name(identifier)) {
-                struct ASTNode *right = parse_expression(parser, op_precedence("·"));
+                struct ASTNode *right = parse_expression(parser, op_r_precedence("·"));
                 left = create_binary_operation_node(left, right, '*');
             } else {
                 parser_next(parser);
@@ -431,9 +515,13 @@ struct ASTNode* parse_expression(struct Parser *parser, int precedence) {
                     fprintf(stderr, "Expected '('\n");
                     exit(EXIT_FAILURE);
                 }
+
                 parser_next(parser);
 
                 struct ASTNode *argument = parse_expression(parser, 0);
+
+                parser_next(parser);
+
                 if (parser_cur(parser)->type != OPERATOR || strcmp(parser_cur(parser)->value, ")") != 0) {
                     fprintf(stderr, "Expected ')'\n");
                     exit(EXIT_FAILURE);
@@ -523,6 +611,44 @@ void print_expressions_simple(struct ASTNode *node) {
     }
 }
 
+void sprint_expressions_simple(struct ASTNode *node, char *buffer) {
+    if (!node) {
+        buffer[0] = '\0';
+        return;
+    }
+
+    switch (node->type) {
+        case AST_CONSTANT:
+            sprintf(buffer, "%f", *(double *)(node->value));
+            break;
+        case AST_VARIABLE:
+            sprintf(buffer, "%s", (char *)(node->value));
+            break;
+        case AST_BINARY_OPERATION: {
+            struct ASTBinaryOperation *op = (struct ASTBinaryOperation *)(node->value);
+            char left_buffer[256], right_buffer[256];
+            sprint_expressions_simple(op->left, left_buffer);
+            sprint_expressions_simple(op->right, right_buffer);
+            sprintf(buffer, "(%s %c %s)", left_buffer, op->operator, right_buffer);
+            break;
+        }
+        case AST_UNARY_OPERATION: {
+            struct ASTUnaryOperation *op = (struct ASTUnaryOperation *)(node->value);
+            char operand_buffer[256];
+            sprint_expressions_simple(op->operand, operand_buffer);
+            sprintf(buffer, "%c%s", op->operator[0], operand_buffer);
+            break;
+        }
+        case AST_FUNCTION: {
+            struct ASTFunction *func = (struct ASTFunction *)(node->value);
+            char argument_buffer[256];
+            sprint_expressions_simple(func->argument, argument_buffer);
+            sprintf(buffer, "%s(%s)", func->name, argument_buffer);
+            break;
+        }
+    }
+}
+
 double evaluate_expression(struct ASTNode *node, double x) {
     if (!node) return 0.0;
 
@@ -578,6 +704,8 @@ double evaluate_expression(struct ASTNode *node, double x) {
                 return exp(argument_value);
             } else if (strcmp(func->name, "sqrt") == 0) {
                 return sqrt(argument_value);
+            } else if (strcmp(func->name, "abs") == 0) {
+                return fabs(argument_value);
             } else {
                 fprintf(stderr, "Unknown function: %s\n", func->name);
                 return 0.0;
@@ -601,7 +729,7 @@ void draw(struct ASTNode *ast) {
         double x = x_min + i * x_step;
         double y = evaluate_expression(ast, x);
 
-        int y_index = (int)((y - y_min) / (y_max - y_min) * Y_RES);
+        int y_index = (int)floor((y - y_min) / (y_max - y_min) * Y_RES);
         if (y_index >= 0 && y_index < Y_RES) {
             matrix[y_index][i] = 1;
         }
@@ -625,6 +753,7 @@ void draw(struct ASTNode *ast) {
     }
 }
 
+#ifdef MAIN_BUILD
 int main() {
     char expression[MAX_EXPRESSION_LEN];
 
@@ -655,3 +784,4 @@ int main() {
 
     return 0;
 }
+#endif
